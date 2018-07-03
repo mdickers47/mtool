@@ -120,6 +120,9 @@ func (mdb *MediaDB) RegexSearch(re string) (paths []string, err error) {
 			}
 			if matched {
 				paths = append(paths, mf.Path)
+				// no need to keep matching against other metadata fields,
+				// which only leads to duplicates in the output
+				break
 			}
 		}
 	}
