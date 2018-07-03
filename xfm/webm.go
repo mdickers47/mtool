@@ -1,140 +1,30 @@
-package db
+package xfm
 
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"sort"
-	"strings"
+
+	"github.com/mdickers47/mtool/db"
 )
 
-func pathSafe(instr string) string {
+// Language is a flag that tells video encoders which audio and subtitle
+// streams you prefer to keep.
 
-	nerf := func(r rune) rune {
-		switch r {
-		case '?', '*', '"', '\'', '!', '<', '>', '(', ')':
-			return -1 // this means 'delete' to strings.Map()
-		case '/', '\\', ':', '#':
-			return '-'
-		default:
-			return r
-		}
-	}
+var Language = flag.String("language", "eng",
+	"which streams to extract from master files")
 
-	outstr := strings.Map(nerf, instr)
-	if len(outstr) == 0 {
-		outstr = "null"
-	}
-	return outstr
+func ImageWebm(mfs []db.MasterFile) []db.ImageFile {
 
-}
-
-func ImageOpus(mfs []MasterFile) []ImageFile {
-
-	imfs := make([]ImageFile, 0, 100)
+	imfs := make([]db.ImageFile, 0, 100)
 	for _, mf := range mfs {
-		if mf.Type != Audio {
+		if mf.Type != db.Video {
 			continue
 		}
-
-		for i := 0; i < len(mf.Title); i++ {
-			var imf ImageFile
-			imf.ImagePath = fmt.Sprintf("%v/%v/%02d %v.opus",
-				pathSafe(mf.Artist), pathSafe(mf.Album), i+1, pathSafe(mf.Title[i]))
-			imf.MasterPath = mf.Path
-			imf.MasterMtime = mf.Mtime
-			imf.Artist = mf.Artist
-			imf.Title = mf.Title[i]
-			imf.Album = mf.Album
-			imf.Date = mf.Date
-			imf.Track = i + 1
-			imf.HasPicture = mf.HasPicture
-			imfs = append(imfs, imf)
-		}
-	}
-	return imfs
-}
-
-func MakeOpus(imf ImageFile) error {
-
-	flacargs := []string{
-		"--silent",
-		"--decode",
-		"--stdout",
-		fmt.Sprintf("--cue=%v.1-%v.1", imf.Track, imf.Track+1),
-		imf.MasterPath}
-	opusargs := []string{
-		"--quiet",
-		"--artist", imf.Artist,
-		"--album", imf.Album,
-		"--title", imf.Title,
-		"--comment", fmt.Sprintf("TRACKNUMBER=%v", imf.Track),
-		"--padding", "0"}
-
-	// extract and inject cover image, if any.
-	if imf.HasPicture {
-		tmpfile, err := ioutil.TempFile("", "mtool")
-		if err != nil {
-			return err
-		}
-		defer os.Remove(tmpfile.Name())
-		if err := tmpfile.Close(); err != nil {
-			return err
-		}
-		cmd := exec.Command("metaflac",
-			"--extract-picture-to", tmpfile.Name(),
-			imf.MasterPath)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("crashed running metaflac: %v", err)
-		}
-		opusargs = append(opusargs, "--picture", tmpfile.Name())
-	}
-
-	opusargs = append(opusargs, "-", imf.ImagePath)
-
-	// create path for file to land (or get "exit 1")
-	err := os.MkdirAll(path.Dir(imf.ImagePath), 0755)
-	if err != nil {
-		return fmt.Errorf("failed to create path %v: %v",
-			path.Dir(imf.ImagePath), err)
-	}
-
-	// hook up pipeline
-	flaccmd := exec.Command("flac", flacargs...)
-	opuscmd := exec.Command("opusenc", opusargs...)
-	if opuscmd.Stdin, err = flaccmd.StdoutPipe(); err != nil {
-		return err
-	}
-
-	// make it go
-	if err := flaccmd.Start(); err != nil {
-		fmt.Printf("flac %v\n", flacargs)
-		return fmt.Errorf("crashed starting flac: %v", err)
-	}
-	if err := opuscmd.Run(); err != nil {
-		fmt.Printf("opusenc %v\n", opusargs)
-		return fmt.Errorf("crashed running opus: %v", err)
-	}
-	if err := flaccmd.Wait(); err != nil {
-		fmt.Printf("flac %v\n", flacargs)
-		return fmt.Errorf("crashed waiting for flac: %v", err)
-	}
-
-	fmt.Printf("created: %v\n", imf.ImagePath)
-	return nil
-}
-
-func ImageWebm(mfs []MasterFile) []ImageFile {
-
-	imfs := make([]ImageFile, 0, 100)
-	for _, mf := range mfs {
-		if mf.Type != Video {
-			continue
-		}
-		var imf ImageFile
+		var imf db.ImageFile
 		if len(mf.Show) > 0 {
 			imf.ImagePath = fmt.Sprintf("tv/%v/%v %v.mkv",
 				pathSafe(mf.Show), pathSafe(mf.Episode), pathSafe(mf.Title[0]))
@@ -157,16 +47,13 @@ func ImageWebm(mfs []MasterFile) []ImageFile {
 	return imfs
 }
 
-var Language = flag.String("language", "eng",
-	"which streams to extract from master files")
-
-func MakeWebm(imf ImageFile) error {
+func MakeWebm(imf db.ImageFile) error {
 
 	var mapArgs []string
 
 	// we keep the first video stream; typically there is only one
 	for i, sd := range imf.Stream {
-		if sd.Type == Video {
+		if sd.Type == db.Video {
 			mapArgs = append(mapArgs, "-map", fmt.Sprintf("0:%v", i))
 			break
 		}
@@ -186,12 +73,12 @@ func MakeWebm(imf ImageFile) error {
 
 	type EnumStream struct {
 		Index  int
-		Stream MpegStreamDesc
+		Stream db.MpegStreamDesc
 	}
 
 	streams := make([]EnumStream, 0, len(imf.Stream))
 	for i, sd := range imf.Stream {
-		if sd.Type == Audio {
+		if sd.Type == db.Audio {
 			streams = append(streams, EnumStream{i, sd})
 		}
 	}
@@ -225,7 +112,7 @@ func MakeWebm(imf ImageFile) error {
 	// repacked using the same dvd_subtitle codec, because "copy" craps
 	// out when moving from an MPEG master to a Matroska container.
 	for i, sd := range imf.Stream {
-		if sd.Type == Subtitle && sd.Language == *Language {
+		if sd.Type == db.Subtitle && sd.Language == *Language {
 			mapArgs = append(mapArgs, "-map", fmt.Sprintf("0:%v", i))
 		}
 	}

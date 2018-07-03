@@ -9,23 +9,14 @@ import (
 	"sync"
 
 	"github.com/mdickers47/mtool/db"
+	"github.com/mdickers47/mtool/xfm"
 )
-
-type Transformer struct {
-	Image func([]db.MasterFile) []db.ImageFile
-	Make  func(db.ImageFile) error
-}
-
-var xfm_byname = map[string]Transformer{
-	"opus": Transformer{db.ImageOpus, db.MakeOpus},
-	"webm": Transformer{db.ImageWebm, db.MakeWebm},
-}
 
 var Parallelism = flag.Int("j", 1, "how many make threads to run in parallel")
 
 func MakeImage(mdb *db.MediaDB, which string, root string) error {
 
-	xfm, ok := xfm_byname[which]
+	xfmr, ok := xfm.Byname[which]
 	if !ok {
 		return fmt.Errorf("invalid transform type: %v", which)
 	}
@@ -38,7 +29,7 @@ func MakeImage(mdb *db.MediaDB, which string, root string) error {
 		return err
 	}
 
-	imfs := xfm.Image(mdb.MasterFiles)
+	imfs := xfmr.Image(mdb.MasterFiles)
 	fmt.Printf("master files: %v image files: %v\n",
 		len(mdb.MasterFiles), len(imfs))
 
@@ -68,7 +59,7 @@ func MakeImage(mdb *db.MediaDB, which string, root string) error {
 		go func() {
 			defer wg.Done()
 			for imf := range imfchan {
-				if err := xfm.Make(imf); err != nil {
+				if err := xfmr.Make(imf); err != nil {
 					fmt.Printf("error: %v\n", err)
 				}
 			}
