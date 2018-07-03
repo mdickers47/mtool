@@ -186,7 +186,7 @@ func SaveDb(mdb MediaDB) error {
 
 // indexByPath() builds a map[string]int that lets you find MasterFiles in mdb
 // by path string.
-func indexByPath(mdb MediaDB) map[string]int {
+func indexByPath(mdb *MediaDB) map[string]int {
 	idx := make(map[string]int, len(mdb.MasterFiles))
 	for i, mf := range mdb.MasterFiles {
 		idx[mf.Path] = i
@@ -236,7 +236,7 @@ func NewMasterFile(path string, info os.FileInfo) *MasterFile {
 // whatever it finds.  The result is the same whether you are "updating" an
 // existing MediaDB or an empty one.  The only difference is the messages
 // printed to "msgs": if you started empty, every file is reported as "new."
-func ScanFiles(mdb MediaDB, msgs io.Writer) (MediaDB, error) {
+func ScanFiles(mdb *MediaDB, msgs io.Writer) error {
 
 	pathIndex := indexByPath(mdb)
 
@@ -283,7 +283,7 @@ func ScanFiles(mdb MediaDB, msgs io.Writer) (MediaDB, error) {
 		})
 
 	if err != nil {
-		return mdb, err
+		return err
 	}
 
 	for i := range mdb.MasterFiles {
@@ -293,7 +293,7 @@ func ScanFiles(mdb MediaDB, msgs io.Writer) (MediaDB, error) {
 	}
 	mdb.compact()
 
-	return mdb, nil
+	return nil
 }
 
 // inspectFlac() extracts FLAC metadata from a master file.
