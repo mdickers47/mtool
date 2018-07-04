@@ -56,8 +56,8 @@ func Scan(mdb *db.MediaDB, _ []string) bool {
 }
 
 func Init(mdb *db.MediaDB, args []string) bool {
-	fmt.Printf("creating new library from %v\n", args[1])
-	mdb.FileRoot = args[1]
+	fmt.Printf("creating new library from %v\n", args[0])
+	mdb.FileRoot = args[0]
 	mdb.MasterFiles = make([]db.MasterFile, 0, 100)
 	err := db.ScanFiles(mdb, os.Stdout)
 	if err != nil {
@@ -102,7 +102,7 @@ func Latest(mdb *db.MediaDB, args []string) bool {
 }
 
 func Make(mdb *db.MediaDB, args []string) bool {
-	err := xfm.MakeImage(mdb, args[1], args[2])
+	err := xfm.MakeImage(mdb, args[0], args[1])
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 	}
