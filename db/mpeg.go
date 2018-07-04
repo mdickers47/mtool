@@ -8,12 +8,14 @@ import (
 	"strconv"
 )
 
+var streamRegex = regexp.MustCompile(
+	`Stream #0.(\d+)\((\w+)\): (Audio|Video|Subtitle): (\w+)(?:.*?(\d+) kb/s)?`)
+var metadataRegex = regexp.MustCompile(
+	`(title|show|episode_id|date) +: (.*)`)
+
 func inspectMpeg(mf *MasterFile) error {
 
-	streamRegex := regexp.MustCompile(
-		`Stream #0.(\d+)\((\w+)\): (Audio|Video|Subtitle).*?(\d+) kb/s`)
-	metadataRegex := regexp.MustCompile(
-		`(title|show|episode_id|date) +: (.*)`)
+	mf.Type = Video
 
 	cmd := exec.Command("ffprobe", mf.Path)
 	stderr, err := cmd.StderrPipe()
@@ -34,6 +36,8 @@ func inspectMpeg(mf *MasterFile) error {
 			// verify that stream number matches what we expect
 			index, err := strconv.Atoi(m[1])
 			if err != nil || index != len(mf.Stream) {
+				fmt.Printf("bad stream number: got %v expected %v\n",
+					index, len(mf.Stream))
 				panic("unpossible or out-of-order stream number!")
 			}
 
@@ -50,12 +54,12 @@ func inspectMpeg(mf *MasterFile) error {
 			}
 
 			// parse bitrate
-			bitrate, err := strconv.Atoi(m[4])
+			bitrate, err := strconv.Atoi(m[5])
 			if err != nil {
-				panic(fmt.Sprintf("unpossible bitrate %v!", m[4]))
+				bitrate = 0
 			}
 
-			sd := MpegStreamDesc{stype, m[2], bitrate}
+			sd := MpegStreamDesc{stype, m[4], m[2], bitrate}
 			mf.Stream = append(mf.Stream, sd)
 
 		} else if m := metadataRegex.FindStringSubmatch(line); m != nil {
@@ -74,7 +78,11 @@ func inspectMpeg(mf *MasterFile) error {
 		}
 	}
 
-	if len(mf.Title) > 0 && len(mf.Title[0]) > 0 && len(mf.Stream) > 0 {
+	if len(mf.Title) == 0 || len(mf.Title[0]) == 0 {
+		fmt.Printf("no title: %v\n", mf.Path)
+	} else if len(mf.Stream) == 0 {
+		fmt.Printf("no streams: %v\n", mf.Path)
+	} else {
 		mf.Valid = true
 	}
 

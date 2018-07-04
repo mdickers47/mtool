@@ -35,6 +35,7 @@ const (
 
 type MpegStreamDesc struct {
 	Type     MediaType
+	Codec    string
 	Language string
 	Bitrate  int
 }
@@ -84,6 +85,20 @@ type MasterFile struct {
 type MediaDB struct {
 	FileRoot    string
 	MasterFiles []MasterFile
+}
+
+// a MasterFileHandler is a function that does the format-specific inspection
+// to populate the metadata database.  These are fragile and have a lot of
+// fragile dependencies, so they are separated into modules for easier
+// maintenance.
+type MasterFileHandler func(*MasterFile) error
+
+// the handlerByExt map will be used to determine which intake handler to
+// invoke on each master file in the library.
+var handlerByExt = map[string]MasterFileHandler{
+	"flac": inspectFlac,
+	"mp4":  inspectMpeg,
+	"mkv":  inspectMpeg,
 }
 
 // compact() deletes all of the MasterFiles in mdb where Valid == false.
@@ -188,32 +203,28 @@ func indexByPath(mdb *MediaDB) map[string]int {
 	return idx
 }
 
-// NewMasterFile() is a constructor that initializes a MasterFile given a path
-// and its os.FileInfo.  Returns nil if the given file name isn't recognized
-// as a media type.  Returns a MasterFile with Valid already set to false if
-// it was not possible to open the file or parse metadata.
+// NewMasterFile() is a constructor that initializes a MasterFile
+// given a path and its os.FileInfo.  Always returns a MasterFile, but
+// with Valid == false if the format is unknown, if the metadata
+// parser failed, or the attempt to open it failed.
 func NewMasterFile(path string, info os.FileInfo) *MasterFile {
+	// initialize a MasterFile with the basic information from stat
 	mf := new(MasterFile)
 	mf.Path = path
 	mf.Mtime = info.ModTime()
 
+	// perform any format-specific inspection for metadata
 	components := strings.Split(info.Name(), ".")
-	switch components[len(components)-1] {
-	case "mp4":
-		mf.Type = Video
-		if err := inspectMpeg(mf); err != nil {
-			return mf
-		}
-	case "mp3":
-		mf.Type = Audio
-	case "flac":
-		mf.Type = Audio
-		if err := inspectFlac(mf); err != nil {
-			return mf
-		}
-	default:
-		return nil
+	handler, ok := handlerByExt[components[len(components)-1]]
+	if !ok {
+		// we have no handler for this file type; ignore it
+		return mf
 	}
+
+	if err := handler(mf); err != nil {
+		return mf
+	}
+	// NB, handler() is expected to have set Valid == true if it worked.
 
 	fd, err := os.Open(path)
 	if err != nil {
@@ -221,8 +232,6 @@ func NewMasterFile(path string, info os.FileInfo) *MasterFile {
 	}
 	defer fd.Close()
 
-	// NB that if we return an object where Valid == false, it will be discarded
-	// from the library immediately.
 	return mf
 }
 

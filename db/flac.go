@@ -11,6 +11,7 @@ import (
 // inspectFlac() extracts FLAC metadata from a master file.
 func inspectFlac(mf *MasterFile) error {
 
+	mf.Type = Audio
 	stream, err := flac.ParseFile(mf.Path)
 	if err != nil {
 		fmt.Printf("flac parsing error: %v\n", err)
