@@ -50,11 +50,13 @@ func ImageWebm(mfs []db.MasterFile) []db.ImageFile {
 func MakeWebm(imf db.ImageFile) error {
 
 	var mapArgs []string
+	var videoStream, audioStream int
 
 	// we keep the first video stream; typically there is only one
 	for i, sd := range imf.Stream {
 		if sd.Type == db.Video {
 			mapArgs = append(mapArgs, "-map", fmt.Sprintf("0:%v", i))
+			videoStream = i
 			break
 		}
 	}
@@ -105,7 +107,8 @@ func MakeWebm(imf db.ImageFile) error {
 	} else {
 		sort.SliceStable(streams, kookySort)
 		fmt.Printf("sorted streams: %v\n", streams)
-		mapArgs = append(mapArgs, "-map", fmt.Sprintf("0:%v", streams[0].Index))
+		audioStream = streams[0].Index
+		mapArgs = append(mapArgs, "-map", fmt.Sprintf("0:%v", audioStream))
 	}
 
 	// we keep all subtitle streams in $language.  They have to be
@@ -124,9 +127,17 @@ func MakeWebm(imf db.ImageFile) error {
 	}
 	args = append(args, mapArgs...)
 	// arguments that control video codec
-	args = append(args, "-c:v", "libvpx-vp9", "-crf", "33", "-b:v", "0")
+	if imf.Stream[videoStream].Codec == "vp9" {
+		args = append(args, "-c:v", "copy")
+	} else {
+		args = append(args, "-c:v", "libvpx-vp9", "-crf", "33", "-b:v", "0")
+	}
 	// arguments that control audio codec
-	args = append(args, "-c:a", "libopus", "-b:a", "192000")
+	if imf.Stream[audioStream].Codec == "opus" {
+		args = append(args, "-c:a", "copy")
+	} else {
+		args = append(args, "-c:a", "libopus", "-b:a", "192000")
+	}
 	// arguments that control subtitle codec
 	args = append(args, "-c:s", "dvd_subtitle")
 	// output file
