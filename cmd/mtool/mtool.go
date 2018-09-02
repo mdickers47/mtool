@@ -36,8 +36,13 @@ var CommandByName = map[string]Command{
 func Info(mdb *db.MediaDB, args []string) bool {
 	fmt.Printf("library file at %v contains %v master files\n", *db.Dbfile,
 		len(mdb.MasterFiles))
-	i := 0
-	keys := make([]string, len(xfm.Byname))
+	i, keys := 0, make([]string, len(db.HandlerByExt))
+	for key, _ := range db.HandlerByExt {
+		keys[i] = key
+		i++
+	}
+	fmt.Printf("available master file handlers: %v\n", strings.Join(keys, ", "))
+	i, keys = 0, make([]string, len(xfm.Byname))
 	for key, _ := range xfm.Byname {
 		keys[i] = key
 		i++

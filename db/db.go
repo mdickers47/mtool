@@ -75,6 +75,8 @@ type MasterFile struct {
 	Valid      bool   // used for mark-and-sweep garbage collection
 	Artist     string // only likely to be useful when Type == Audio
 	Album      string
+	TrackNum   int
+	TrackMax   int
 	Show       string // only likely to be useful when Type == Video
 	Episode    string
 	Stream     []MpegStreamDesc
@@ -95,10 +97,12 @@ type MasterFileHandler func(*MasterFile) error
 
 // the handlerByExt map will be used to determine which intake handler to
 // invoke on each master file in the library.
-var handlerByExt = map[string]MasterFileHandler{
+var HandlerByExt = map[string]MasterFileHandler{
 	"flac": inspectFlac,
-	"mp4":  inspectMpeg,
 	"mkv":  inspectMpeg,
+	"m4a":  inspectMp3,
+	"mp3":  inspectMp3,
+	"mp4":  inspectMpeg,
 }
 
 // compact() deletes all of the MasterFiles in mdb where Valid == false.
@@ -203,6 +207,11 @@ func indexByPath(mdb *MediaDB) map[string]int {
 	return idx
 }
 
+func Extension(path string) string {
+	components := strings.Split(path, ".")
+	return components[len(components)-1]
+}
+
 // NewMasterFile() is a constructor that initializes a MasterFile
 // given a path and its os.FileInfo.  Always returns a MasterFile, but
 // with Valid == false if the format is unknown, if the metadata
@@ -214,8 +223,7 @@ func NewMasterFile(path string, info os.FileInfo) *MasterFile {
 	mf.Mtime = info.ModTime()
 
 	// perform any format-specific inspection for metadata
-	components := strings.Split(info.Name(), ".")
-	handler, ok := handlerByExt[components[len(components)-1]]
+	handler, ok := HandlerByExt[Extension(info.Name())]
 	if !ok {
 		// we have no handler for this file type; ignore it
 		return mf

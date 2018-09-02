@@ -68,7 +68,7 @@ func MakeImage(mdb *db.MediaDB, which string, root string) error {
 			defer wg.Done()
 			for imf := range imfchan {
 				if err := xfmr.Make(imf); err != nil {
-					fmt.Printf("error: %v\n", err)
+					fmt.Printf("%v: %v\n", imf.ImagePath, err)
 				}
 			}
 		}()

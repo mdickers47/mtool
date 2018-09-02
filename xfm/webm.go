@@ -106,7 +106,7 @@ func MakeWebm(imf db.ImageFile) error {
 		fmt.Printf("warning: no audio streams in %v", imf.MasterPath)
 	} else {
 		sort.SliceStable(streams, kookySort)
-		fmt.Printf("sorted streams: %v\n", streams)
+		//fmt.Printf("sorted streams: %v\n", streams)
 		audioStream = streams[0].Index
 		mapArgs = append(mapArgs, "-map", fmt.Sprintf("0:%v", audioStream))
 	}
