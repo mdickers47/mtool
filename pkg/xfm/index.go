@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/mdickers47/mtool/db"
+	"github.com/mdickers47/mtool/pkg/db"
 )
 
 var Parallelism = flag.Int("j", 1, "how many make threads to run in parallel")

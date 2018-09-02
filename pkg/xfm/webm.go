@@ -8,7 +8,7 @@ import (
 	"path"
 	"sort"
 
-	"github.com/mdickers47/mtool/db"
+	"github.com/mdickers47/mtool/pkg/db"
 )
 
 // Language is a flag that tells video encoders which audio and subtitle

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mdickers47/mtool/db"
-	"github.com/mdickers47/mtool/xfm"
+	"github.com/mdickers47/mtool/pkg/db"
+	"github.com/mdickers47/mtool/pkg/xfm"
 )
 
 type Command struct {

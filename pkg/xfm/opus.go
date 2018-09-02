@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/dhowden/tag"
-	"github.com/mdickers47/mtool/db"
+	"github.com/mdickers47/mtool/pkg/db"
 )
 
 func pathSafe(instr string) string {
