@@ -59,6 +59,7 @@ lang_iso_code = {
   'ja': 'jpn', # Japanese
   'ko': 'kor', # Korean
   'pt': 'por', # Portuguese
+  'th': 'tha', # Thai
   'ru': 'rus', # Russian
   'zh': 'chi', # Chinese
   'unknown': 'eng',
@@ -226,6 +227,7 @@ def re_mux(tmpfile, metadata_bag):
     # Output file is the only positional argument, and has to go last.
     cmd.append(outfile)
 
+    msg('and away we go: %s' % ' '.join(cmd))
     child = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
                              stderr=subprocess.PIPE)
     stdout, stderr = child.communicate(input=None)
@@ -256,16 +258,27 @@ def re_mux(tmpfile, metadata_bag):
       bad_stream = m.group(1)
       msg('Cannot interpret stream %s.' % bad_stream)
       msg('Trying again with that stream excluded.')
-      # now for some fun: constructing a set of -map args that excludes only
-      # the bad stream
-      map_args = []
-      stream_re = re.compile(r'Stream #0:(\d+)')
-      for line in stderr.split('\n'):
-        # make sure to stop reading after the end of the 'input' section
-        if line.startswith('Output #0'): break
-        m = stream_re.search(line)
-        if m and m.group(1) != bad_stream:
-          map_args.extend(['-map', '0:%s' % m.group(1)])
+      # now for some fun: constructing a set of -map args that
+      # excludes only the bad stream.  To make this even better, the
+      # error refers to streams by their position in the *output* mux.
+      # So if our last try relied on "-map 0" to bring everything
+      # along, we have to guess at what that expanded to.  If we
+      # already did that expansion, then we have to find and remove
+      # the right "-map" entry.
+      if len(map_args) == 2:
+        map_args = []
+        stream_re = re.compile(r'Stream #0:(\d+)')
+        for line in stderr.split('\n'):
+          # make sure to stop reading after the end of the 'input' section
+          if line.startswith('Output #0'): break
+          m = stream_re.search(line)
+          if m and m.group(1) != bad_stream:
+            map_args.extend(['-map', '0:%s' % m.group(1)])
+      else:
+        assert map_args[int(bad_stream) * 2] == '-map'
+        # delete twice at the same position to get the '-map' and the '0:x'
+        del map_args[int(bad_stream) * 2]
+        del map_args[int(bad_stream) * 2]
       continue
 
     # If we made it here, we don't know why ffmpeg crashed.  Good luck!
