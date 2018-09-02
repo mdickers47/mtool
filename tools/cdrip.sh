@@ -57,9 +57,9 @@ ALBUM=$(grep 'ALBUM=' tags | cut -d= -f2)
 if [ -n "$ARTIST" -a -n "$ALBUM" ] ; then
   NEWFILE="$ARTIST - $ALBUM.flac"
   mv -v "$OUTFILE" "$NEWFILE"
-  msg "Finished file is \'$NEWFILE\'"
+  msg "Finished file is '$NEWFILE'"
 fi
 
 msg "Remember to store the cover image:"
-msg "metaflac --import-picture-from=xyz.jpg \'$NEWFILE\'"
+msg "metaflac --import-picture-from=xyz.jpg '$NEWFILE'"
 

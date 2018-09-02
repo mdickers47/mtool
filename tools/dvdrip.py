@@ -1,5 +1,32 @@
 #!/usr/bin/env python
+"""dvdrip.py - Dump video titles from DVD to multiplexed MP4 files.
 
+No conversion or re-coding is done, yet this still gets very
+complicated, because DVDs are hyper-optimized to be played by machines
+of very little brain.  The MPEG-4 video codec is inefficient compared
+to 2018 options, and the bitrates and variations discovered on
+commercial DVDs vary wildly.  The resulting dump file will be much
+bigger and worse-performing than can be achieved by recoding
+afterwards.
+
+Subtitle and audio streams are interleaved so that a player can avoid
+seeking or buffering.  The MP4 container file can also multiplex them,
+but the result will not be useful unless the streams have all been
+labeled with metadata (so that you can find the English audio again,
+for example).  DVDs are sloppy about labeling the streams, so many
+hacks have to be applied.  These hacks assume one of two basic
+schemes: it's a movie (where we want to record year and title), or
+it's a TV show (where we want year, show name, and multiple episode
+names).
+
+DVD menus are basically bitmaps overlaid with a spaghetti mess of
+GOTOs, so we can't interpret them.  This means you just have to guess
+from the TOC of video titles, which one is the video you want.  TV
+DVDs with many same-length titles on one disc will end up out of order
+sometimes.
+
+Written 2018 by Mikey Dickerson.
+"""
 import argparse
 import os
 import random
@@ -37,8 +64,6 @@ lang_iso_code = {
   'unknown': 'eng',
 }
 
-#global ARGS
-
 
 class Stream(object):
   """Stream here is a container for metadata describing one of the streams
@@ -67,7 +92,6 @@ def die(err):
 def read_toc(n):
   """Use lsdvd to read the table of contents, print each 'Title' line,
   and find the n longest titles."""
-
   title_len = []
   for line in subprocess.Popen('lsdvd', stdout=subprocess.PIPE).stdout:
     line = line.strip()
@@ -97,9 +121,7 @@ def mktemp():
 def parse_metadata(log):
   """Parse the stdout output from mplayer and look for the metadata
   identifying the format and language of the streams in the
-  multiplexed dump.
-  """
-
+  multiplexed dump."""
   streams = []
   audio_re = re.compile(r'audio stream: \d+ format: ([\w\.]+) \(([\w\.]+)\) '
                         'language: (\w+)')
@@ -125,7 +147,6 @@ def parse_metadata(log):
 def rip(t, dumpfile):
   """Use mplayer to dump a given title off the dvd.  Capture the stdout
   output and send to parse_metadata to find the stream descriptors."""
-
   msg('Ripping title %d' % t)
   cmd = [ 'mplayer', '-dumpstream', 'dvd://%d' % t,
           '-nocache', '-noidx', '-dumpfile', tmp ]
@@ -137,7 +158,6 @@ def rip(t, dumpfile):
 def stream_language_tags(stream_defs):
   """Given a list of stream descriptor objects, return a list of -metadata
   arguments for ffmpeg to tag all the streams."""
-
   args = []
   astream, sstream = 0, 0
   for s in stream_defs:
@@ -155,10 +175,8 @@ def stream_language_tags(stream_defs):
 
 
 def filesafe(s):
-  """
-  Deletes or substitutes the characters that are likely to cause
-  non-portable filenames: anything Unicode, and (?*:/\#!"'<>).
-  """
+  """Deletes or substitutes the characters that are likely to cause
+  non-portable filenames: anything Unicode, and (?*:/\#!"'<>)."""
   if not s: return ''
   s = s.encode('ascii', 'replace')
   badchar = r'?*"\'!<>()'
@@ -169,13 +187,11 @@ def filesafe(s):
 
 
 def re_mux(tmpfile, metadata_bag):
-  """
-  You have to re-multiplex the entire file to get metadata tags into it.  The
-  bare minimum way to do this is to pass all the streams through the ffmpeg
-  'copy' codec.  Unfortunately this exposes us to all the (many) bugs and
-  brittle-by-design behaviors of the decoder and multiplexer.
-  """
-
+  """You have to re-multiplex the entire file to get metadata tags into
+  it.  The bare minimum way to do this is to pass all the streams
+  through the ffmpeg 'copy' codec.  Unfortunately this exposes us to
+  all the (many) bugs and brittle-by-design behaviors of the decoder
+  and multiplexer."""
   map_args = ['-map', '0']
   if 'episode_id' in metadata_bag:
     outfile = filesafe("%s %s.mp4" % (metadata_bag['episode_id'],
