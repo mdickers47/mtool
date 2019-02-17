@@ -26,9 +26,9 @@ var CommandByName = map[string]Command{
 	"init": {Init,
 		"initialize library (arg: /path/to/root)", 1, 1},
 	"find": {Find,
-		"regex search metadata and output master files (argv: regexes)", 1, 1024},
+		"regex search metadata and output file names (argv: regexes)", 1, 1024},
 	"latest": {Latest,
-		"output most recent n master files (arg: n)", 1, 1},
+		"output most recent n master files (arg: n)", 0, 1},
 	"make": {Make,
 		"transcode and create output image (args: imager, /output/path)", 2, 2},
 }
@@ -93,7 +93,7 @@ func Latest(mdb *db.MediaDB, args []string) bool {
 		n = 10
 	} else {
 		var err error
-		n, err = strconv.Atoi(args[1])
+		n, err = strconv.Atoi(args[0])
 		if err != nil {
 			fmt.Printf("bad argument: %v\n", err)
 			return false
