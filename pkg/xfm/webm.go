@@ -137,6 +137,11 @@ func MakeWebm(imf db.ImageFile) error {
 		args = append(args, "-c:a", "copy")
 	} else {
 		args = append(args, "-c:a", "libopus", "-b:a", "192000")
+		// this is clunky, but ffmpeg/opus helpfully crashes if the
+		// input stream carries the "5.1(side)" channel map, because it's
+		// really important to not accidentally just treat it like 5.1.
+		args = append(args, "-af", "channelmap=channel_layout=5.1")
+
 	}
 	// arguments that control subtitle codec
 	args = append(args, "-c:s", "dvd_subtitle")
@@ -152,6 +157,7 @@ func MakeWebm(imf db.ImageFile) error {
 	cmd := exec.Command("ffmpeg", args...)
 	//cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
+		fmt.Printf("failed commmand: ffmpeg %v\n", args)
 		return fmt.Errorf("can't run: %v", err)
 	}
 
