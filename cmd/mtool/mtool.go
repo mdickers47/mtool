@@ -141,6 +141,8 @@ func main() {
 
 	args := flag.Args()[1:]
 	if len(args) < cmd.MinArgs || len(args) > cmd.MaxArgs {
+		fmt.Printf("%v requires %v to %v arguments.\n",
+			flag.Arg(0), cmd.MinArgs, cmd.MaxArgs)
 		usage()
 		return
 	}
