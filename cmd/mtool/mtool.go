@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -106,7 +107,27 @@ func Latest(mdb *db.MediaDB, args []string) bool {
 	return false
 }
 
+var MakeRegex = flag.String("f", "", "path regex to limit make output")
+
 func Make(mdb *db.MediaDB, args []string) bool {
+	if *MakeRegex != "" {
+		// hack down the mdb to only those master files whose path match a
+		// given regex
+		newlist := make([]db.MasterFile, 0, len(mdb.MasterFiles))
+		for _, mf := range mdb.MasterFiles {
+			matched, err := regexp.MatchString(*MakeRegex, mf.Path)
+			if err != nil {
+				fmt.Printf("error: %v\n", err)
+				return false
+			}
+			if matched {
+				newlist = append(newlist, mf)
+			}
+		}
+		mdb.MasterFiles = newlist
+		fmt.Printf("regex selected %v master files\n", len(mdb.MasterFiles))
+	}
+
 	err := xfm.MakeImage(mdb, args[0], args[1])
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
