@@ -20,6 +20,7 @@ type Transformer struct {
 var Byname = map[string]Transformer{
 	"opus": Transformer{ImageOpus, MakeOpus},
 	"webm": Transformer{ImageWebm, MakeWebm},
+	"aac":  Transformer{ImageAac, MakeAac},
 }
 
 func MakeImage(mdb *db.MediaDB, which string, root string) error {
