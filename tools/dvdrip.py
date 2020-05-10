@@ -27,6 +27,9 @@ sometimes.
 
 Written 2018 by Mikey Dickerson.
 """
+
+from __future__ import print_function
+
 import argparse
 import os
 import random
@@ -95,8 +98,8 @@ def read_toc(n):
   and find the n longest titles."""
   title_len = []
   for line in subprocess.Popen('lsdvd', stdout=subprocess.PIPE).stdout:
-    line = line.strip()
-    print line
+    line = line.strip().decode('utf-8')
+    print(line)
     m = re.match('Title: (\d+), Length: ([0-9:\.]+)', line)
     if m: title_len.append((m.group(2), int(m.group(1))))
 
@@ -129,7 +132,7 @@ def parse_metadata(log):
   subtitle_re = re.compile(r'subtitle \( sid \): \d+ language: (\w+)')
 
   for line in log:
-    line = line.strip()
+    line = line.strip().decode('utf-8')
     m = audio_re.match(line)
     if m:
       stream = Stream('audio', '%s:%s' % (m.group(1), m.group(2)),
@@ -179,7 +182,7 @@ def filesafe(s):
   """Deletes or substitutes the characters that are likely to cause
   non-portable filenames: anything Unicode, and (?*:/\#!"'<>)."""
   if not s: return ''
-  s = s.encode('ascii', 'replace')
+  s = s.encode('ascii', 'replace').decode('ascii')
   badchar = r'?*"\'!<>()'
   for c in badchar: s = s.replace(c, '')
   badchar = r':/\#'
@@ -220,7 +223,7 @@ def re_mux(tmpfile, metadata_bag):
     # after a recoverable error.
     cmd.append('-y')
     # Now you can do metadata arguments.
-    for k, v in metadata_bag.iteritems():
+    for k, v in metadata_bag.items():
       cmd.append('-metadata')
       cmd.append('%s=%s' % (k, str(v)))
     cmd.extend(stream_language_tags(streams))
@@ -327,7 +330,7 @@ if __name__ == '__main__':
     die('Bye Bye')
   new_tracks = new_tracks.strip()
   if new_tracks:
-    tracks = map(int, new_tracks.split())
+    tracks = list(map(int, new_tracks.split()))
 
   if len(tracks) != len(titles):
     die('selected %d tracks to rip, but number of tags is %d'
