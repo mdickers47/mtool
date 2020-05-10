@@ -34,7 +34,7 @@ func ImageAac(mfs []db.MasterFile) []db.ImageFile {
 			}
 			imf.TrackMax = mf.TrackMax
 			imf.HasPicture = mf.HasPicture
-			imf.ImagePath = fmt.Sprintf("%v/%v/%02d %v.m4a",
+			imf.ImagePath = fmt.Sprintf("%v/%v/%02d %.32s.m4a",
 				pathSafe(imf.Artist), pathSafe(imf.Album), imf.Track,
 				pathSafe(mf.Title[i]))
 			imfs = append(imfs, imf)

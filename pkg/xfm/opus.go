@@ -57,7 +57,7 @@ func ImageOpus(mfs []db.MasterFile) []db.ImageFile {
 				imf.Track = i + 1
 			}
 			imf.HasPicture = mf.HasPicture
-			imf.ImagePath = fmt.Sprintf("%v/%v/%02d %v.opus",
+			imf.ImagePath = fmt.Sprintf("%v/%v/%02d %.32v.opus",
 				pathSafe(imf.Artist), pathSafe(imf.Album), imf.Track,
 				pathSafe(mf.Title[i]))
 			imfs = append(imfs, imf)
