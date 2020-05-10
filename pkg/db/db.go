@@ -59,6 +59,7 @@ type ImageFile struct {
 	Artist      string
 	Album       string
 	Track       int
+	TrackMax    int
 	Stream      []MpegStreamDesc
 }
 
@@ -261,6 +262,11 @@ func ScanFiles(mdb *MediaDB, msgs io.Writer) error {
 			if err != nil {
 				fmt.Fprintf(msgs, "fatal error scanning %v: %v\n", path, err)
 				return err
+			}
+
+			// this is a junk directory created by Synology NAS
+			if info.IsDir() && info.Name() == "@eaDir" {
+				return filepath.SkipDir
 			}
 
 			if info.IsDir() {
