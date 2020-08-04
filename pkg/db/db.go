@@ -280,10 +280,7 @@ func ScanFiles(mdb *MediaDB, msgs io.Writer) error {
 			}
 
 			mf := NewMasterFile(path, info)
-			if mf == nil {
-				return nil
-			} else if mf.Valid == false {
-				fmt.Fprintf(msgs, "invalid file: %v\n", path)
+			if mf == nil || !mf.Valid {
 				return nil
 			}
 
