@@ -93,7 +93,8 @@ func MakeOpus(imf db.ImageFile) error {
 		"--artist", imf.Artist,
 		"--album", imf.Album,
 		"--title", imf.Title,
-		"--comment", fmt.Sprintf("TRACKNUMBER=%v", imf.Track),
+		"--date", imf.Date,
+		"--tracknumber", fmt.Sprintf("%v", imf.Track),
 		"--padding", "0"}
 
 	// extract and inject cover image, if any.

@@ -79,10 +79,9 @@ func MakeAac(imf db.ImageFile) error {
 		"--album", imf.Album,
 		"--title", imf.Title,
 		"--track", trackarg,
+		"--date", imf.Date,
 		"-o", imf.ImagePath,
 		"-"} // input file is stdin
-	//"--comment", fmt.Sprintf("TRACKNUMBER=%v", imf.Track),
-	//"--padding", "0"}
 
 	// TODO: Don't know how to place cover art in the m4a container
 	// except by using the Nero aac tool that I don't want to deal
