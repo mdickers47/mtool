@@ -3,10 +3,14 @@ package xfm
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
+	"github.com/dhowden/tag"
 	"github.com/mdickers47/mtool/pkg/db"
 )
 
@@ -21,6 +25,7 @@ var Byname = map[string]Transformer{
 	"opus": Transformer{ImageOpus, MakeOpus},
 	"webm": Transformer{ImageWebm, MakeWebm},
 	"aac":  Transformer{ImageAac, MakeAac},
+	"mp3":  Transformer{ImageMp3, MakeMp3},
 }
 
 func MakeImage(mdb *db.MediaDB, which string, root string) error {
@@ -81,4 +86,71 @@ func MakeImage(mdb *db.MediaDB, which string, root string) error {
 	wg.Wait()
 
 	return nil
+}
+
+// utilities that are used by more than one xfm module
+
+func pathSafe(instr string) string {
+
+	nerf := func(r rune) rune {
+		switch r {
+		case '?', '*', '"', '\'', '!', '<', '>', '(', ')':
+			return -1 // this means 'delete' to strings.Map()
+		case '/', '\\', ':', '#':
+			return '-'
+		case '&':
+			return '+'
+		default:
+			return r
+		}
+	}
+
+	outstr := strings.Map(nerf, instr)
+	if len(outstr) == 0 {
+		outstr = "null"
+	}
+	return outstr
+
+}
+
+func getPicture(path string) (tmppath string, err error) {
+	tmpf, err := ioutil.TempFile("", "mtool")
+	if err != nil {
+		return
+	}
+	if err = tmpf.Close(); err != nil {
+		return
+	}
+	tmppath = tmpf.Name()
+
+	if db.Extension(path) == "flac" {
+		cmd := exec.Command("metaflac", "--export-picture-to",
+			tmppath, path)
+		if err = cmd.Run(); err != nil {
+			return
+		}
+	} else {
+		var mf *os.File
+		if mf, err = os.Open(path); err != nil {
+			return
+		}
+		defer mf.Close()
+
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("panic in tag library: %v", r)
+			}
+		}()
+
+		var md tag.Metadata
+		md, err = tag.ReadFrom(mf)
+		if err != nil {
+			return
+		}
+
+		tmppath += "." + md.Picture().Ext
+		err = ioutil.WriteFile(tmppath, md.Picture().Data, 0644)
+	}
+
+	return
 }

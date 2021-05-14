@@ -9,7 +9,7 @@ import (
 	"github.com/mdickers47/mtool/pkg/db"
 )
 
-func ImageOpus(mfs []db.MasterFile) []db.ImageFile {
+func ImageMp3(mfs []db.MasterFile) []db.ImageFile {
 
 	imfs := make([]db.ImageFile, 0, 100)
 	for _, mf := range mfs {
@@ -31,7 +31,7 @@ func ImageOpus(mfs []db.MasterFile) []db.ImageFile {
 				imf.Track = i + 1
 			}
 			imf.HasPicture = mf.HasPicture
-			imf.ImagePath = fmt.Sprintf("%v/%v/%02d %.32v.opus",
+			imf.ImagePath = fmt.Sprintf("%v/%v/%02d %.32v.mp3",
 				pathSafe(imf.Artist), pathSafe(imf.Album), imf.Track,
 				pathSafe(mf.Title[i]))
 			imfs = append(imfs, imf)
@@ -40,7 +40,7 @@ func ImageOpus(mfs []db.MasterFile) []db.ImageFile {
 	return imfs
 }
 
-func MakeOpus(imf db.ImageFile) error {
+func MakeMp3(imf db.ImageFile) error {
 
 	var flacargs []string
 
@@ -61,15 +61,16 @@ func MakeOpus(imf db.ImageFile) error {
 			"pipe:",
 		}
 	}
-	opusargs := []string{
-		"opusenc",
+	mp3args := []string{
+		"lame",
+		"--preset", "standard",
 		"--quiet",
-		"--artist", imf.Artist,
-		"--album", imf.Album,
-		"--title", imf.Title,
-		"--date", imf.Date,
-		"--tracknumber", fmt.Sprintf("%v", imf.Track),
-		"--padding", "0"}
+		"--ta", imf.Artist,
+		"--tl", imf.Album,
+		"--tt", imf.Title,
+		"--ty", imf.Date, // must be year only, 1 to 9999
+		"--tn", fmt.Sprintf("%v", imf.Track),
+	}
 
 	// extract and inject cover image, if any.
 	if imf.HasPicture {
@@ -78,37 +79,36 @@ func MakeOpus(imf db.ImageFile) error {
 			return fmt.Errorf("failed to extract cover art: %v", err)
 		}
 		defer os.Remove(picfile)
-		opusargs = append(opusargs, "--picture", picfile)
+		mp3args = append(mp3args, "--ti", picfile)
 	}
 
-	opusargs = append(opusargs, "-", imf.ImagePath)
+	// input file and output file
+	mp3args = append(mp3args, "-", imf.ImagePath)
 
 	// create path for file to land (or get "exit 1")
 	err := os.MkdirAll(path.Dir(imf.ImagePath), 0755)
 	if err != nil {
 		return err
-		//return fmt.Errorf("failed to create path %v: %v",
-		//	path.Dir(imf.ImagePath), err)
 	}
 
 	// hook up pipeline
 	flaccmd := exec.Command(flacargs[0], flacargs[1:]...)
-	opuscmd := exec.Command(opusargs[0], opusargs[1:]...)
-	if opuscmd.Stdin, err = flaccmd.StdoutPipe(); err != nil {
+	mp3cmd := exec.Command(mp3args[0], mp3args[1:]...)
+	if mp3cmd.Stdin, err = flaccmd.StdoutPipe(); err != nil {
 		return err
 	}
 
 	// make it go
 	if err := flaccmd.Start(); err != nil {
-		fmt.Printf("flac %v\n", flacargs)
+		fmt.Printf("flac: %v\n", flacargs)
 		return fmt.Errorf("crashed starting flac: %v", err)
 	}
-	if err := opuscmd.Run(); err != nil {
-		fmt.Printf("opusenc %v\n", opusargs)
-		return fmt.Errorf("crashed running opus: %v", err)
+	if err := mp3cmd.Run(); err != nil {
+		fmt.Printf("lame: %v\n", mp3args)
+		return fmt.Errorf("crashed running lame: %v", err)
 	}
 	if err := flaccmd.Wait(); err != nil {
-		fmt.Printf("flac %v\n", flacargs)
+		fmt.Printf("flac: %v\n", mp3args)
 		return fmt.Errorf("crashed waiting for flac: %v", err)
 	}
 
