@@ -43,6 +43,8 @@ func inspectFlac(mf *MasterFile) error {
 
 	if len(mf.Title) > 0 && len(mf.Title[0]) > 0 {
 		mf.Valid = true
+	} else {
+		fmt.Printf("no TITLE tags: %v\n", mf.Path)
 	}
 
 	return nil
