@@ -9,7 +9,7 @@ import (
 )
 
 var streamRegex = regexp.MustCompile(
-	`Stream #0.(\d+)\((\w+)\): (Audio|Video|Subtitle): (\w+)(?:.*?(\d+) kb/s)?`)
+	`Stream #0:(\d+).*?\((\w+)\): (Audio|Video|Subtitle): (\w+)(?:.*?(\d+) kb/s)?`)
 var metadataRegex = regexp.MustCompile(
 	`(title|show|episode_id|date) +: (.*)`)
 
