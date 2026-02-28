@@ -21,19 +21,14 @@ func ImageOpus(mfs []db.MasterFile) []db.ImageFile {
 			var imf db.ImageFile
 			imf.MasterPath = mf.Path
 			imf.MasterMtime = mf.Mtime
-			imf.Artist = mf.Artist
-			imf.Title = mf.Title[i]
 			imf.Album = mf.Album
+			imf.AlbumArtist = mf.Artist
 			imf.Date = mf.Date
-			if mf.TrackNum > 0 {
-				imf.Track = mf.TrackNum
-			} else {
-				imf.Track = i + 1
-			}
+			imf.Artist, imf.Title, imf.Track = mf.GetTrackTags(i)
 			imf.HasPicture = mf.HasPicture
 			imf.ImagePath = fmt.Sprintf("%v/%v/%02d %.32v.opus",
-				pathSafe(imf.Artist), pathSafe(imf.Album), imf.Track,
-				pathSafe(mf.Title[i]))
+				pathSafe(imf.AlbumArtist), pathSafe(imf.Album), imf.Track,
+				pathSafe(imf.Title))
 			imfs = append(imfs, imf)
 		}
 	}
@@ -64,11 +59,12 @@ func MakeOpus(imf db.ImageFile) error {
 	opusargs := []string{
 		"opusenc",
 		"--quiet",
-		"--artist", imf.Artist,
-		"--album", imf.Album,
-		"--title", imf.Title,
-		"--date", imf.Date,
-		"--tracknumber", fmt.Sprintf("%v", imf.Track),
+		"--comment", fmt.Sprintf("ARTIST=%v", imf.Artist),
+		"--comment", fmt.Sprintf("ALBUM=%v", imf.Album),
+		"--comment", fmt.Sprintf("ALBUMARTIST=%v", imf.AlbumArtist),
+		"--comment", fmt.Sprintf("TITLE=%v", imf.Title),
+		"--comment", fmt.Sprintf("DATE=%v", imf.Date),
+		"--comment", fmt.Sprintf("TRACKNUMBER=%v", imf.Track),
 		"--padding", "0"}
 
 	// extract and inject cover image, if any.

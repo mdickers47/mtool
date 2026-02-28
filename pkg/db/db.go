@@ -58,6 +58,7 @@ type ImageFile struct {
 	HasPicture  bool
 	Artist      string
 	Album       string
+	AlbumArtist string
 	Track       int
 	TrackMax    int
 	Stream      []MpegStreamDesc
@@ -67,20 +68,21 @@ type ImageFile struct {
 // derivative files.  If it is ever possible for a master file to be modified
 // by this code, it is a bug.
 type MasterFile struct {
-	Path       string
-	Type       MediaType
-	Title      []string
-	Date       string
-	Mtime      time.Time
-	HasPicture bool
-	Valid      bool   // used for mark-and-sweep garbage collection
-	Artist     string // only likely to be useful when Type == Audio
-	Album      string
-	TrackNum   int
-	TrackMax   int
-	Show       string // only likely to be useful when Type == Video
-	Episode    string
-	Stream     []MpegStreamDesc
+	Path            string
+	Type            MediaType
+	Title           []string
+	Date            string
+	Mtime           time.Time
+	HasPicture      bool
+	Valid           bool   // used for mark-and-sweep garbage collection
+	Artist          string // only likely to be useful when Type == Audio
+	MultipleArtists bool
+	Album           string
+	TrackNum        int
+	TrackMax        int
+	Show            string // only likely to be useful when Type == Video
+	Episode         string
+	Stream          []MpegStreamDesc
 }
 
 // a MediaDB is just a list of MasterFiles, plus we save the FileRoot so that
@@ -104,6 +106,24 @@ var HandlerByExt = map[string]MasterFileHandler{
 	"m4a":  inspectMp3,
 	"mp3":  inspectMp3,
 	"mp4":  inspectMpeg,
+}
+
+// translating flac-per-album metadata into file-per-track metadata
+// requires some guesswork.  since it will be the same for any
+// file-per-track output format, the guessing of Artist, Title,
+// Tracknum is done here.
+func (mf *MasterFile) GetTrackTags(i int) (string, string, int) {
+	artist, title, tracknum := "", "", i + 1
+	if mf.TrackNum > 0 {
+		tracknum = mf.TrackNum
+	}
+	if mf.MultipleArtists {
+		substrings := strings.SplitN(mf.Title[i], "-", 2)
+		artist, title = substrings[0], substrings[1]
+	} else {
+		artist, title = mf.Artist, mf.Title[i]
+	}
+	return artist, title, tracknum
 }
 
 // compact() deletes all of the MasterFiles in mdb where Valid == false.

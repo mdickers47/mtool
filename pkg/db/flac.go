@@ -41,6 +41,17 @@ func inspectFlac(mf *MasterFile) error {
 		}
 	}
 
+	// apply a heuristic to guess whether this is a album-per-file flac
+	// that has multiple artists and uses the hack of naming each track
+	// "Artist-Song Title"
+	mf.MultipleArtists = true
+	for _, title := range mf.Title {
+		if !strings.Contains(title, "-") {
+			mf.MultipleArtists = false
+			break
+		}
+	}
+
 	if len(mf.Title) > 0 && len(mf.Title[0]) > 0 {
 		mf.Valid = true
 	} else {
